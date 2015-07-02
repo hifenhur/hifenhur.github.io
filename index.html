@@ -2,21 +2,355 @@
 layout: default
 ---
 
-<div class="home">
+<canvas id="canvas" width="70" height="130"></canvas>
 
-  <a href="{{ site.videos.first.url }}">{{site.videos.first.url}}</a>
+<script type="text/javascript" src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
+<script type="text/javascript">
 
-  <h1>Posts</h1>
+    var canvas = $("#canvas")[0];
+    var ctx = canvas.getContext("2d");
+    
+    var cw = Math.floor(window.innerHeight / 20);
 
-  <ul class="posts">
-    {% for post in site.posts %}
-      <li>
-        <span class="post-date">{{ post.date | date: "%b %-d, %Y" }}</span>
-        <a class="post-link" href="{{ post.url | prepend: site.baseurl }}">{{ post.title }}</a>
-      </li>
-    {% endfor %}
-  </ul>
+    canvas.height = Math.floor(window.innerHeight / cw) * cw
+    canvas.width  = Math.floor((canvas.height / 2) / cw) * cw
 
-  <p class="rss-subscribe">subscribe <a href="{{ "/feed.xml" | prepend: site.baseurl }}">via RSS</a></p>
+    var h = canvas.height;
+    var w = canvas.width;
+    
 
-</div>
+    var blocks = []
+    var currentBlock = null
+    var staticBlocks = [];
+
+    var direction = "right"
+
+    var food = null;
+
+    
+
+    initBlocks();
+    startGame();
+
+
+    function paintCell(x, y, color) {
+        ctx.fillStyle = color;
+        ctx.fillRect(x * cw, y * cw, cw, cw);
+        ctx.strokeStyle = "white";
+        ctx.strokeRect(x * cw, y * cw, cw, cw);
+    }
+
+
+
+    $('html').on('keydown', function(e){
+        console.log(e.which)
+    	if(e.which == 38){
+    		rotateBlock()
+    	}else if(e.which == 37){
+    		moveBlock("left");
+    	}else if(e.which == 39){
+    		moveBlock("right");
+    	}else if(e.which == 40){
+            moveBlock("down");
+        }else{
+            return false
+        }
+    });
+
+    function moveBlock(direction){
+
+    	if (checkColapse()) {
+    		nb = new Object(currentBlock);
+    		staticBlocks.push(nb);
+    		currentBlock = getRandomBlock();
+    	}else if (canMove(direction)){
+            for (var i = 0; i < currentBlock.length; i++) {
+                if (direction == "down") {
+    	            currentBlock[i].y++;
+    	        }else if (direction == "right") {
+                    currentBlock[i].x++;
+                }else if (direction == "left") {
+                    currentBlock[i].x--;
+                }else if (direction == "up") {
+                    rotateBlock();
+                }
+            }
+    	}
+        destroyLine();
+
+    	paint();
+    }
+
+
+
+    function canMove(direction){
+        staticCells = getStaticCells()
+        result = true
+        currentBlock.forEach(function(cell, i){
+            if (direction == "right") {
+                if (currentBlock[i].x == ((w/cw) - 1) ) {
+                    result = false
+                }
+                staticCells.forEach(function(sCell){
+                    if (((sCell.x - cell.x) == 1) && (sCell.y == cell.y)) {
+                        result = false
+                    };
+                })
+            }else if (direction == "left"){
+                if (currentBlock[i].x == 0 ) {
+                    console.log("foi pra esquerda heh")
+                    result = false
+                }
+                staticCells.forEach(function(sCell){
+                    if (((cell.x - sCell.x) == 1) && (sCell.y == cell.y)) {
+                        result = false
+                    };
+                })
+            }
+        })
+
+        return result
+        
+    }
+    
+
+    
+
+	function paint(){
+		ctx.fillStyle = "white"
+		ctx.fillRect(0,0,w, h);
+
+		for (var i = 0; i < currentBlock.length; i++) {
+			paintCell(currentBlock[i].x, currentBlock[i].y, currentBlock[i].color)
+		};
+
+		for (var i = 0; i < staticBlocks.length; i++) {
+			sb = staticBlocks[i];
+			for (var x = 0; x < sb.length; x++) {
+				paintCell(sb[x].x, sb[x].y, sb[x].color)
+			}
+            
+        };
+	}
+
+	
+
+	function initBlocks(){
+		quadrado = [
+	        {x:0, y:0},
+	        {x:0, y:1},
+	        {x:1, y:0},
+	        {x:1, y:1}
+        ]
+	    reto = [
+	    	{x:0, y:0},
+	        {x:1, y:0},
+	        {x:2, y:0, base: true},
+	        {x:3, y:0}
+	    ]
+        z = [
+            {x:0, y:0},
+            {x:1, y:0},
+            {x:1, y:1, base: true},
+            {x:2, y:1}
+        ]
+        l = [
+            {x:0, y:0},
+            {x:0, y:1, base: true},
+            {x:0, y:2},
+            {x:1, y:2}
+        ]
+        t = [
+            {x:1, y:0},
+            {x:0, y:1},
+            {x:1, y:1, base: true},
+            {x:2, y:1}
+        ]
+
+	    blocks.push(quadrado);
+	    blocks.push(reto);
+        blocks.push(z);
+        blocks.push(l);
+        blocks.push(t);
+	}
+
+    function startGame(){
+
+        currentBlock = getRandomBlock();
+        staticBlocks = [];
+        for (var i = 0; i < currentBlock.length; i++) {
+            paintCell(currentBlock[i].x, currentBlock[i].y, currentBlock[i].color)
+        };
+
+    }
+
+    function rotateBlock(){
+        current_base = null
+
+        currentBlock.forEach(function(e, i){
+            if (typeof currentBlock[i].base != "undefined"){
+                current_base = currentBlock[i]
+            }
+        })
+        
+        if (current_base) {
+            currentBlock.forEach(function(e, i){
+                
+                if ( current_base != currentBlock[i]) {
+                    ly = currentBlock[i].y
+                    lx = currentBlock[i].x
+
+                    if ((ly == current_base.y)) {
+                        
+                        if (currentBlock[i].x < current_base.x) {
+                            currentBlock[i].y -= (current_base.x - currentBlock[i].x)
+                        }else if (currentBlock[i].x > current_base.x) {
+                            currentBlock[i].y += (currentBlock[i].x - current_base.x)
+                        }
+                        currentBlock[i].x = current_base.x
+                    }else if ((lx == current_base.x)) {
+                        if (currentBlock[i].y < current_base.y) {
+                            currentBlock[i].x += (current_base.y - currentBlock[i].y)
+                        }else if (currentBlock[i].y > current_base.y) {
+                            currentBlock[i].x -= (currentBlock[i].y -current_base.y)
+                        }
+                        currentBlock[i].y = current_base.y
+                    }else if(lx < current_base.x){
+                        if (currentBlock[i].y > current_base.y) {
+                            currentBlock[i].y -= ((currentBlock[i].y - current_base.y) * 2)
+                        }else if (currentBlock[i].y < current_base.y) {
+                            currentBlock[i].x += ((current_base.x - currentBlock[i].x) * 2)
+                        };                        
+                    }else if(lx > current_base.x){
+                        if (currentBlock[i].y > current_base.y) {
+                            currentBlock[i].x -= ((currentBlock[i].x - current_base.x) * 2)
+                        }else if (currentBlock[i].y < current_base.y) {
+                            currentBlock[i].y += ((current_base.y - currentBlock[i].y) * 2)
+                        };
+                    }
+                }
+
+                
+            });    
+        }else{
+            return true
+        }
+
+        paint();
+        
+    }
+    
+   
+
+    function getRandomBlock(){
+        var newRandomBlock = JSON.parse(JSON.stringify((blocks[Math.floor(Math.random()*blocks.length)])))
+        ncolor = getRandomColor()
+
+        newRandomBlock.forEach(function(cell, i){
+            newRandomBlock[i].color = ncolor
+        });
+
+		return newRandomBlock;
+    }
+
+    function checkColapse(){
+    	
+    	for (var i = currentBlock.length - 1; i > 0 ; i--) {
+
+			if ((currentBlock[i].y == (h/cw) - 1) || checkColapseWithAnotherBlock(currentBlock)){
+				return true;
+			}else{
+				return false;
+			}
+        }
+		
+	}
+
+    function checkColapseWithAnotherBlock(currentBlock){
+        for (var cb = 0; cb < currentBlock.length; cb++) {
+            for (var z = 0; z < staticBlocks.length; z++) {
+                for (var i = 0; i < staticBlocks[z].length; i++) {
+                    if (currentBlock[cb].x == staticBlocks[z][i].x && currentBlock[cb].y == staticBlocks[z][i].y - 1) {
+                        return true;
+                    }        
+                }
+            }
+        }
+    }
+
+    function destroyLine(){
+        lines = {}
+        staticBlocks.forEach(function(staticBlock){
+            staticBlock.forEach(function(cell){
+                if (typeof lines[cell.y] == "undefined"){
+                    lines[cell.y] = []
+                    lines[cell.y].push(cell.x)
+                }else{
+                    lines[cell.y].push(cell.x)
+                }
+            });
+        })
+        
+        keys = Object.keys(lines)
+        
+        keys.forEach(function(key){
+            if(lines[key].length == (w/cw)){
+                console.log('apagar linha'+ key)
+                eraseLine(key)
+            }
+        })
+    }
+
+    function eraseLine(key){
+        staticBlocks.forEach(function(staticBlock, i){
+            staticBlock.forEach(function(cell, x){
+                if (cell.y == key){
+                    staticBlocks[i][x] = staticBlock.filter(function(sCell){ return sCell.y != key})
+                }else{
+                    
+                }
+            });
+        })
+
+        staticBlocks.forEach(function(staticBlock){
+            staticBlock.forEach(function(cell){
+                if (cell.y < key) {
+                    cell.y++;
+                }
+            });
+        })
+    }
+
+    function getStaticCells(){
+        cells = []
+        staticBlocks.forEach(function(block){
+            block.forEach(function(cell){
+                cells.push(cell)
+            })
+        })
+        return cells;
+    }
+
+    function getRandomColor() {
+        var letters = '0123456789ABCDEF'.split('');
+        var color = '#';
+        for (var i = 0; i < 6; i++ ) {
+            color += letters[Math.floor(Math.random() * 16)];
+        }
+        return color;
+    }
+
+    window.setInterval(function(){
+        moveBlock("down");
+
+    }, 300);
+    
+	
+		
+</script>
+
+<style type="text/css">
+    canvas{
+        border: 1px solid black;
+    }
+</style>
