@@ -3,16 +3,18 @@ layout: default
 ---
 
 <canvas id="canvas" width="70" height="130"></canvas>
-
+<script type="text/javascript" src="https://raw.githubusercontent.com/GianlucaGuarini/Tocca.js/master/Tocca.min.js"></script>
 <script type="text/javascript" src="http://code.jquery.com/jquery-2.1.4.min.js"></script>
 <script type="text/javascript">
 
     var canvas = $("#canvas")[0];
     var ctx = canvas.getContext("2d");
     
-    var cw = Math.floor(window.innerHeight / 20);
+    height = window.innerHeight * 0.8
 
-    canvas.height = Math.floor(window.innerHeight / cw) * cw
+    var cw = Math.floor(height / 20);
+
+    canvas.height = Math.floor(height / cw) * cw
     canvas.width  = Math.floor((canvas.height / 2) / cw) * cw
 
     var h = canvas.height;
@@ -41,7 +43,7 @@ layout: default
     }
 
 
-
+    //controlls
     $('html').on('keydown', function(e){
         console.log(e.which)
     	if(e.which == 38){
@@ -56,6 +58,21 @@ layout: default
             return false
         }
     });
+
+    canvas.addEventListener('dbltap',function(e){
+        rotateBlock();
+    });
+    canvas.addEventListener('swipeleft',function(e){
+        moveBlock("left")
+    });
+    canvas.addEventListener('swiperight',function(e){
+        moveBlock("right")
+    });
+    canvas.addEventListener('swipedown',function(e){
+        moveBlock("down")
+    });
+    //controlls
+
 
     function moveBlock(direction){
 
